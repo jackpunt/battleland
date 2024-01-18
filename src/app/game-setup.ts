@@ -1,6 +1,7 @@
 import { Params } from '@angular/router';
 import { C, Constructor } from '@thegraid/common-lib';
-import { AliasLoader, GameSetup as GameSetupLib, Hex, Scenario as Scenario0, TP } from '@thegraid/hexlib';
+import { AliasLoader, GamePlay, GameSetup as GameSetupLib, Hex, Meeple, Player, Scenario as Scenario0, TP, Tile } from '@thegraid/hexlib';
+import { BatlTable } from './batl-table';
 import { BatlHex, BatlMap } from './battle-hex';
 
 // type Params = {[key: string]: any;}; // until hexlib supplies
@@ -40,7 +41,16 @@ export class GameSetup extends GameSetupLib {
     const hexC = BatlHex as Constructor<Hex>;
     this.hexMap = new BatlMap<Hex & BatlHex>(TP.hexRad, true, hexC);
     this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
-    this.startScenario({turn: 0, Aname: 'defaultScenario'});
-  }
+    const scenario = { turn: 0, Aname: 'defaultScenario' };
+
+    Tile.allTiles = [];
+    Meeple.allMeeples = [];
+    Player.allPlayers = [];
+    this.table = new BatlTable(this.stage);        // EventDispatcher, ScaleCont, GUI-Player
+    // Inject Table into GamePlay & make allPlayers:
+    const gamePlay = new GamePlay(this, scenario) // hexMap, players, fillBag, gStats, mouse/keyboard->GamePlay
+    this.gamePlay = gamePlay;
+
+    this.startScenario(scenario);  }
 
 }

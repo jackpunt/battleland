@@ -62,47 +62,6 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
     return hexAry
   }
 
-  /**
-   * Make rectangle of hexes (marked with district) created with this.hexC
-   *
-   * rnd == 1 looks best when nc is odd;
-   * @param nr height
-   * @param nc width [nr + 1]
-   * @param district district [0]
-   * @param rnd 0: all, 1: rm end of row 0 (& half of last row!)
-   * @parma half [(rnd === 1) || (nc % 2 === 1)] force/deny final half-row
-   * @param hexAry array in which to push the created Hexes [Array()<T>]
-   * @returns hexAry with the created Hexes pushed (row major)
-   */
-  makeRect(nr: number, nc = nr + 1, rnd = 1, half = (rnd === 1) || (nc % 2 === 1), hexAry: T[] = []): T[] {
-    const hexAryNR = [] as any as (T[] & { Nr: number, Nc: number });
-    hexAryNR['Nr'] = nr; hexAryNR['Nc'] = nc;         // for debugger
-    const district = 0;
-    // nr = 9; nc = 11; rnd = 1; half = (rnd === 1) || (nc % 2 === 1);
-    const ncOdd = (nc % 2) === 0;
-    const c00 = (rnd === 0) ? 0 : 1;
-    const nc0 = (rnd === 0) ? 0 : nc - (ncOdd ? 1 : 2 * c00);
-    this.addRowOfHex(nc0, 0, c00, district, hexAry);
-    for (let row = 1; row < nr - 1; row++) {
-      this.addRowOfHex(nc, row, 0, district, hexAry);
-    }
-    const cf0 = (rnd === 0) ? 0 : 2;
-    const ncf = nc - ((rnd === 0) ? 0 : 3);
-    const di = (half) ? 2 : 1;
-    this.addRowOfHex(ncf, nr - 1, cf0, district, hexAry, di);
-    this.setDistrictColor(hexAry, district);
-    this.hexAry = hexAry;
-    return hexAry;
-  }
-
-  /** create horizontal row using addHex(row, col++, district) */
-  addRowOfHex(n: number, row: number, col: number, district: number, hexAry: Hex[], di = 1): RC {
-    for (let i = 0; i < n; i += di) {
-      hexAry.push(this.addHex(row, col + i, district))
-    }
-    return { row, col };
-  }
-
   labelHexes(hexAry: T[]) {
     // let sn = 1; .slice(sn, sn + 1) + sn
     let hexid = 1;
