@@ -1,7 +1,7 @@
+import { Params } from '@angular/router';
 import { C, Constructor } from '@thegraid/common-lib';
 import { AliasLoader, GameSetup as GameSetupLib, Hex, Scenario as Scenario0, TP } from '@thegraid/hexlib';
-import { TitanHex, TitanMap } from './titan-hex';
-import { Params } from '@angular/router';
+import { BatlHex, BatlMap } from './battle-hex';
 
 // type Params = {[key: string]: any;}; // until hexlib supplies
 export interface Scenario extends Scenario0 {
@@ -20,9 +20,9 @@ export class GS {
 export class GameSetup extends GameSetupLib {
 
   override initialize(canvasId: string, qParams = []): void {
-    // TitanHex uses NsTopo, size 7.
+    // BatlHex uses NsTopo, size 17.
     TP.useEwTopo = false;
-    TP.nHexes = 7;
+    TP.nHexes = 17;
     super.initialize(canvasId);
     return;
   }
@@ -30,14 +30,15 @@ export class GameSetup extends GameSetupLib {
   override loadImagesThenStartup(qParams: Params = []) {
     const loader = AliasLoader.loader ?? (AliasLoader.loader = new AliasLoader());
     loader.imageArgs.ext = 'gif';
-    const names = Object.values(TitanMap.terrainNames);
+    const names = Object.values(BatlMap.terrainNames);
     const names_i = names.map(name => `${name}_i`);
     loader.fnames = names.concat(names_i).concat(['Recycle']);
     super.loadImagesThenStartup(qParams);    // loader.loadImages(() => this.startup(qParams));
   }
 
   override startup(qParams?: { [key: string]: any; } | undefined): void {
-    this.hexMap = new TitanMap<Hex & TitanHex>(TP.hexRad, true, TitanHex as Constructor<Hex>)
+    const hexC = BatlHex as Constructor<Hex>;
+    this.hexMap = new BatlMap<Hex & BatlHex>(TP.hexRad, true, hexC);
     this.nPlayers = Math.min(TP.maxPlayers, qParams?.['n'] ? Number.parseInt(qParams?.['n']) : 2);
     this.startScenario({turn: 0, Aname: 'defaultScenario'});
   }

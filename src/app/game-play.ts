@@ -1,8 +1,8 @@
-import { GamePlay as GamePlayLib, Hex, HexMap, TP } from "@thegraid/hexlib";
-import { TitanHex, TitanMap } from "./titan-hex";
 import { Constructor } from "@thegraid/common-lib";
+import { GamePlay as GamePlayLib, Hex, TP } from "@thegraid/hexlib";
+import { BatlHex, BatlMap } from "./battle-hex";
 
 
 export class GamePlay extends GamePlayLib {
-  override hexMap: TitanMap<TitanHex> = new TitanMap(TP.hexRad, true, TitanHex as Constructor<Hex>);
+  override hexMap: BatlMap<BatlHex> = new BatlMap(TP.hexRad, true, BatlHex as Constructor<Hex>);
 }

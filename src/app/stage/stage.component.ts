@@ -56,7 +56,7 @@ export class StageComponent implements OnInit {
     TP.gport = Number.parseInt(urlParams.get('port') || TP.gport.toString(10), 10)
     TP.networkUrl = buildURL(undefined);
     const {n, file} = this.qParams;
-    this.titleService.setTitle(`Titans ${n?` n=${n}`:''}${file?`file=${file}`:''}`);
+    this.titleService.setTitle(`Battleland ${n?` n=${n}`:''}${file?`file=${file}`:''}`);
     ;(document.getElementById('readFileName') as HTMLInputElement).value = file ?? 'setup@0';
     const gs = new GameSetup(this.mapCanvasId, this.qParams);    // load images; new GamePlay(qParams);
     if (href.endsWith("startup") || false) {
