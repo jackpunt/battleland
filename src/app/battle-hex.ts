@@ -117,12 +117,6 @@ export class BatlHex extends Hex2 {
 
   get color() { return this.hexShape.colorn; }
 
-  /** rcText always visible */
-  override showText(vis = this.rcText.visible): void {
-    this.rcText.visible = vis;
-    this.cont.updateCache();
-  }
-
   addImage() {
     const name = this.terrText.text;         // 'Brush' or whatever;
     const img_name = (this.terrText.y > this.hexid.y) ? `${name}_i` : `${name}`;
@@ -144,118 +138,18 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   }
 
   /** utility for makeAllDistricts; make hex0 at RC */
-  override calcInitialHex(): RC {
-    // suitable for makeMetaHexes
+  override calculateRC0(): RC {
     const offs = Math.ceil(this.nh + this.mh * 1.5);
     return { row: offs, col: offs } // row,col to be non-negative
   }
 
-  /**
-   * Make the center district, then make (mh-1) rings other meta-hex districts.
-   * @param mh order [number of 'rings'] of meta-hexes (2 or 3 for this game) [TP.mHexes]
-   * @param nh size ['rings' in each meta-hex] of meta-hex (1..6) [TP.nHexes]
-   */
-  override makeAllDistricts(nh = TP.nHexes, mh = TP.mHexes) {
-    this.setSize(nh, mh);
-    this.setSize(nh = 3, mh = 2);
-    let district = 0;
-    let rc0 = this.calcInitialHex();
-    const dirs = this.linkDirs;
-    // do metaRing = 0
-    const hexAry = this.makeMetaHex(nh, district++, rc0); // Central District [0]
-    console.log(stime(this, `.centerHex(${0}, ${0})`), rc0, 0, 'center');
-
-    let mrc0: RC = rc0;
-    // step (nh, dir) until
-    for (let metaRing = 1; metaRing < mh; metaRing++) {
-      // step in dir4 to initial mrc1 (W or WS of rc0)
-      const dir4 = dirs[4], dir3 = dirs[(4 + 5) % 6]; // ring starts at 'dist' from center
-      const dL = nh, dS = (nh - 1);
-      mrc0 = this.forRCsOnLine(dL, mrc0, dir4); // step (WS) by dist
-      mrc0 = this.forRCsOnLine(dS, mrc0, dir3); // step (S) to center of 0-th metaHex
-      console.log(stime(this, `.dir4(${dir4}, ${-1})`), mrc0, dL, dS);
-
-
-      // step from mrc1 to make line of metatRing metaHex-es along each dir.
-      dirs.forEach((dirL, nd) => {
-        for (let nhc = 1; nhc <= metaRing; nhc++) { // < metaRing?
-          const dirS = dirs[(nd + 5) % 6];       // dirs[dir-1]
-          const mrc10 = { ...mrc0 };             // for log
-          mrc0 = this.forRCsOnLine(dL, mrc0, dirL);
-          console.log(stime(this, `.dirs.forEach(${dirL}, ${nd})`), mrc10, dL, dirL, mrc0);
-          mrc0 = this.forRCsOnLine(dS, mrc0, dirS);
-          console.log(stime(this, `.dirs.forEach(${dirL}, ${nd})`), mrc10, dS, dirS, mrc0);
-          const hexAry2 = this.makeMetaHex(nh, district++, mrc0);
-          hexAry.concat(...hexAry2);
-        }
-      })
-    }
-    this.hexAry = hexAry;
-    this.mapCont.hexCont && this.mapCont.centerContainers()
-    return hexAry;
+  override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
+    this.setSize(nh = 2, mh = 3);
+    return this.makeMetaHexRings(nh, mh, rc0);
   }
 
-  /** like nextHex, but uses nextRowCol, so does not assume/require existing hex.links
-   *
-   * approx: { row: rc.row + n * dr, col: rc.col + n * dc };
-   *
-   * but accounts for each even/odd row offset.
-   */
-  override radialRC(rc: RC, n = 1, dir = this.linkDirs[4]) {
-    for (let ring = 1; ring <= n; ring++) {
-      rc = this.nextRowCol(rc, dir);
-    }
-    return rc;
-  }
-
-  /**
-   * Apply f(rc, dir) to each of 'n' lines of RCs on nth ring.
-   * Step from centerHex by dirs[4], do a line for each dir in dirs.
-   *
-   * - if topoEW: step to W; make lines going NE, E, SE, SW, W, NW
-   * - if topoNS: step to WS; make lines going N, EN, ES, S, WS, WN
-   * @param rc0 center of rings
-   * @param n ring number
-   * @param dirs [this.linkDirs] each topo dirs in [clockwise] order.
-   * @param f (RC, dir) => void
-   * @return the *next* RC on the final line (so can easily spiral)
-   */
-  override ringWalk(rc0: RC, n: number, dirs = this.linkDirs, f: (rc: RC, dir: HexDir) => void) {
-    let rc: RC = this.radialRC(rc0, n, dirs[4]);
-    // TODO: proceed from [last/given] rc0! requires rc = f(rc, dir) => RC
-    dirs.forEach(dir => {
-      rc = this.forRCsOnLine(n, rc, dir, (rc) => {
-        f(rc, dir);
-        return rc;
-      });
-    });
-    return rc;
-  }
-
-  /** make a district of order nh, at rc(row, col)
-   *
-   * addHex for center hex and each of nh 'rings' hexes.
-   * @param nh order of the metaHex/district
-   * @param district identifying number of district
-   * @param rc location of center Hex
-   * @return array containing all the added Hexes
-   */
-  override makeMetaHex(nh: number, district: number,  rc: RC): T[] {
-    let hexAry = Array<Hex>(), rc0 = {...rc};
-    hexAry.push(this.addHex(rc.row, rc.col, district)) // The *center* hex of district
-    // let rc: RC = this.radialRC(rc0, n, dirs[4]);
-    for (let ring = 1; ring < nh; ring++) {
-      rc = this.ringWalk(rc0, ring, this.linkDirs, (rc, dir) => {
-        // place 'ring' hexes along each axis-line:
-        return this.newHexesOnLine(ring, rc, dir, district, hexAry)
-      });
-    }
-    if (hexAry[0] instanceof Hex2) {
-      let hex2Ary = hexAry as Hex2[]
-      let dcolor = district == 0 ? HexMap.distColor[0] : this.pickColor(hex2Ary)
-      hex2Ary.forEach((hex, n) => hex.setHexColor((n == 0) ? C.PURPLE : dcolor)); // C.PURPLE
-    }
-    return hexAry as T[];
+  override paintDistrict(hex2Ary: Hex2[], district = 0, cColor = undefined): void {
+    super.paintDistrict(hex2Ary, district, cColor)
   }
 
   // OR override makeAllDistricts(...)
