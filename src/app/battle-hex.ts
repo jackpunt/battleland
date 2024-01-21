@@ -140,18 +140,39 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   /** utility for makeAllDistricts; make hex0 at RC */
   override calculateRC0(): RC {
     const offs = Math.ceil(this.nh + this.mh * 1.5);
-    return { row: offs, col: offs } // row,col to be non-negative
+    return { row: 1, col: 1 } // row,col to be non-negative
   }
 
   override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
-    this.setSize(nh = 2, mh = 3);
-    return this.makeDistrictRect(nh, mh, rc0);
+    this.setSize(nh = 2, mh = 1);
+    return this.makeMetaHexRect(9, 9, nh, rc0);
   }
-
+  metaStep(rc: RC, nd: number, dirs = this.linkDirs): RC {
+    const dL = this.nh, dS = dL - 1;
+    const dirL = dirs[nd], dirS = dirs[(nd - 1) % 6]; // ring starts at 'dist' from center
+    rc = this.forRCsOnLine(dL, rc, dirL); // step (WS) by dist
+    rc = this.forRCsOnLine(dS, rc, dirS); // step (S) to center of 0-th metaHex
+    return rc;
+  }
+  makeMetaHexRect(nr = 10, nc = 15, nh = 3, rc0: RC = { row: 0, col: 0}) {
+    let hexAry: T[] = [], district = 0, ds = 2, rl0 = rc0, rc = rc0;
+    let mcol = 15, mrow = 10, rl = (2 * nh - -1);
+    for (let r = 0; r < mrow; r++) {
+      const dsr = (r % 2 === 0) ? 4 : 3;
+      district = r * 20; rc = rl0 = this.metaStep(rl0, dsr);
+      hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc))
+      for (let c = 1; c < mcol ; c++) {
+        const dsc = ((c % rl) === (rl - rl)) ? ds - 1 : ds;
+        district += 1; rc = this.metaStep(rc, dsc);
+        hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc));
+      }
+    }
+    return hexAry;
+  }
   // OR override makeAllDistricts(...)
   makeDistrictRect(nh: number, district: number, rc0: RC): T[] {
     const nr = TP.nHexes, nc = nr + 6;
-    const hexAry = this.makeRect(nr, nc, 1);
+    const hexAry = this.makeMetaHexRect(nr, nc, 1);
     this.labelHexes(hexAry);
     return hexAry
   }
