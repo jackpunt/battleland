@@ -145,15 +145,11 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
 
   override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
     this.setSize(nh = 2, mh = 3);
-    return this.makeMetaHexRings(nh, mh, rc0);
-  }
-
-  override paintDistrict(hex2Ary: Hex2[], district = 0, cColor = undefined): void {
-    super.paintDistrict(hex2Ary, district, cColor)
+    return this.makeDistrictRect(nh, mh, rc0);
   }
 
   // OR override makeAllDistricts(...)
-  makeDistrictRect(nh: number, district: number, mr: number, mc: number): T[] {
+  makeDistrictRect(nh: number, district: number, rc0: RC): T[] {
     const nr = TP.nHexes, nc = nr + 6;
     const hexAry = this.makeRect(nr, nc, 1);
     this.labelHexes(hexAry);
