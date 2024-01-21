@@ -4,5 +4,5 @@ import { BatlHex, BatlMap } from "./battle-hex";
 
 
 export class GamePlay extends GamePlayLib {
-  override hexMap: BatlMap<BatlHex> = new BatlMap(TP.hexRad, true, BatlHex as Constructor<Hex>);
+  override hexMap: BatlMap<Hex & BatlHex> = new BatlMap(TP.hexRad, true, BatlHex as Constructor<Hex>);
 }
