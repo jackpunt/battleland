@@ -156,15 +156,20 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   }
   makeMetaHexRect(nr = 10, nc = 15, nh = 3, rc0: RC = { row: 0, col: 0}) {
     let hexAry: T[] = [], district = 0, ds = 2, rl0 = rc0, rc = rc0;
-    let mcol = 15, mrow = 10, rl = (2 * nh - -1);
+    // let rowMin: number | undefined = undefined;
+    let mcol = 16, mrow = 16, rl = (3 * nh - 1); // nh:rl 2->5; 3->8; 4->11;
     for (let r = 0; r < mrow; r++) {
-      const dsr = (r % 2 === 0) ? 4 : 3;
-      district = r * 20; rc = rl0 = this.metaStep(rl0, dsr);
-      hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc))
+      const dsr = (r % 2 === 0) ? 4 : 3;      // alternate WS & ES, every 2 rows
+      district = r * 20, rc = rl0 = this.metaStep(rl0, dsr);
+      if (r === (4 * nh - 0)) rc = rl0 = this.metaStep(rc, ds); // skip right in 4*nh rows
       for (let c = 1; c < mcol ; c++) {
-        const dsc = ((c % rl) === (rl - rl)) ? ds - 1 : ds;
+        // if ((district !== 0) && (district !== ((mrow-1) * 20 + mcol - 2)))
+        {
+          hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc));
+          // if (rowMin === undefined) rowMin = rc.row;  // the first, top-left row value;
+        }
+        const dsc = ((c % rl) === (rl - rl)) ? ds - 1 : ds; // bump row
         district += 1; rc = this.metaStep(rc, dsc);
-        hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc));
       }
     }
     return hexAry;
