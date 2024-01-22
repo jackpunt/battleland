@@ -1,6 +1,6 @@
 import { C, Constructor, F, RC, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
-import { Bitmap, Text } from "@thegraid/easeljs-module";
+import { Bitmap, Container, Text } from "@thegraid/easeljs-module";
 import { AliasLoader, H, Hex, Hex2, HexDir, HexMap, NsDir, TP, Topo, TopoNS } from "@thegraid/hexlib";
 
 type TerrId = 'U' | 'N' | 'M' | 'P' | 'D' | 'W' | 'H' | 'T' | 'B' | 'J' | 'S';
@@ -140,11 +140,11 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   /** utility for makeAllDistricts; make hex0 at RC */
   override calculateRC0(): RC {
     const offs = Math.ceil(this.nh + this.mh * 1.5);
-    return { row: 1, col: 1 } // row,col to be non-negative
+    return { row: 3, col: 3 } // row,col to be non-negative
   }
 
   override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
-    this.setSize(nh = 2, mh = 1);
+    this.setSize(nh = 3, mh = 1);
     return this.makeMetaHexRect(9, 9, nh, rc0);
   }
   metaStep(rc: RC, nd: number, dirs = this.linkDirs): RC {
@@ -157,23 +157,57 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   makeMetaHexRect(nr = 10, nc = 15, nh = 3, rc0: RC = { row: 0, col: 0}) {
     let hexAry: T[] = [], district = 0, ds = 2, rl0 = rc0, rc = rc0;
     // let rowMin: number | undefined = undefined;
-    let mcol = 16, mrow = 16, rl = (3 * nh - 1); // nh:rl 2->5; 3->8; 4->11;
+    let mrow = nr, mcol = nc, rl = (3 * nh - 1); // nh:rl 2->5; 3->8; 4->11;
     for (let r = 0; r < mrow; r++) {
       const dsr = (r % 2 === 0) ? 4 : 3;      // alternate WS & ES, every 2 rows
       district = r * 20, rc = rl0 = this.metaStep(rl0, dsr);
-      if (r === (4 * nh - 0)) rc = rl0 = this.metaStep(rc, ds); // skip right in 4*nh rows
+      // if (r === (4 * nh)) rc = rl0 = this.metaStep(rc, ds); // skip right in 4*nh rows
       for (let c = 1; c < mcol ; c++) {
         // if ((district !== 0) && (district !== ((mrow-1) * 20 + mcol - 2)))
         {
           hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc));
           // if (rowMin === undefined) rowMin = rc.row;  // the first, top-left row value;
         }
-        const dsc = ((c % rl) === (rl - rl)) ? ds - 1 : ds; // bump row
+        const dsc = ds ?? (((c % rl) === (rl - rl)) ? ds - 1 : ds); // [disabled] bump row
         district += 1; rc = this.metaStep(rc, dsc);
       }
     }
+    const { x, y, width, height } = this.mapCont.hexCont.getBounds();
+    this.mapCont.hexCont.rotation = this.rotate(nh);
+    this.mapCont.hexCont.setBounds(x, y, width, height);
     return hexAry;
   }
+
+  rotate(nh: number) {
+    const A = 60 * Math.PI / 180, sinA = Math.sin(A), cosA = Math.cos(A);
+    const b = nh, c = 2 * nh - 1;
+    const a = Math.sqrt(b * b + c * c - 2 * cosA * b * c);
+    const B = Math.asin(sinA * b / a);
+    // const B = this.calcSAS(b, c, A);
+    // const Bdeg = B * 180 / Math.PI;
+    return (Math.PI/2 - B - A) * 180 / Math.PI; // <-- negative rotation
+  }
+  // for sides a, b, c; law of sines: a/sin(α = opp-a) = b/sin(β = opp-b) = c/sin(γ = opp-b)
+  // a^2 = b^2 + c^2 −2bc * cos(α)
+  // B = asin(sin(α) * b / a)
+  /**
+   *
+   * @param b short side
+   * @param c longer side
+   * @param A angle between them (radians)
+   * @return angle opposite b
+   */
+  calcSAS(b: number, c: number, A: number) {
+    const a = Math.sqrt(b * b + c * c - 2 * b * c * Math.cos(A));
+    // assert: b < c
+    const B = Math.asin(Math.sin(A) * b / a)
+    return B;
+  }
+
+  override update(): void {
+    super.update();
+  }
+
   // OR override makeAllDistricts(...)
   makeDistrictRect(nh: number, district: number, rc0: RC): T[] {
     const nr = TP.nHexes, nc = nr + 6;
@@ -241,4 +275,31 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
     rv.fill(tid, 0, n);
     return rv;
   }).flat().concat(new Array(this.tsize).fill('P', 0, this.tsize)).splice(0, this.tsize);
+}
+
+
+// <T extends Hex & BatlMap<Hex & BatlHex>> extends HexMap<T>
+class MetaHex<T extends Hex> extends Container {
+  hexAry: Hex[] = [];
+
+  constructor(public hexMap: HexMap<T>) {
+    super();
+  }
+
+  addHexes(nh: number, district: number,  rc: RC) {
+    const hexMap = this.hexMap;
+    const hexAry = this.hexAry;
+    hexAry.push(hexMap.addHex(rc.row, rc.col, district)) // The *center* hex of district
+    for (let ring = 1; ring < nh; ring++) {
+      rc = hexMap.nextRowCol(rc, hexMap.linkDirs[4]);
+      // place 'ring' of hexes, addHex along each line:
+      rc = hexMap.ringWalk(rc, ring, hexMap.linkDirs, (rc, dir) => {
+        hexAry.push(hexMap.addHex(rc.row, rc.col, district));
+        return hexMap.nextRowCol(rc, dir);
+      });
+    }
+    hexMap.setDistrictAndPaint(hexAry as T[], district);
+    return hexAry as T[];
+
+  }
 }
