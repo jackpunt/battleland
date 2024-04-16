@@ -150,7 +150,7 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
   /** utility for makeAllDistricts; make hex0 at RC */
   override calculateRC0(): RC {
     const offs = Math.ceil(this.nh + this.mh * 1.5);
-    return { row: 3, col: 3 } // row,col to be non-negative
+    return { row: 0, col: 7 } // row,col to be non-negative
   }
 
   override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
@@ -188,11 +188,8 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
 
   /** rotateHexCont; to align MetaHex row to horizontal. */
   rotateHexCont(nh: number) {
-    // TODO: offset regX/Y to centerHex
-    const { x, y } = this.xywh, cont = this.mapCont.hexCont;
-    // cont.regX = -x, cont.regY = -y;
-    cont.rotation = this.rotate(nh);
-    // cont.regX = 0, cont.regY = 0;
+    const hexCont = this.mapCont.hexCont;
+    hexCont.rotation = this.rotate(nh);
   }
 
   /** cache hexCont and show the bitmap rotated on hexContR. */ // TODO: remove hexContR

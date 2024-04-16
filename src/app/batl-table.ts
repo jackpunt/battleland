@@ -11,45 +11,27 @@ export class BatlTable extends Table {
     return undefined as any as Hex2;
   }
 
-  override bgXYWH(x0 = -1, y0 = .5, w0 = 10, h0 = 1, dw = 0, dh = 0) {
+  override layoutTurnlog(rowy = 9, colx = -16) {
+    super.layoutTurnlog(rowy, colx);
+  }
+
+  override bgXYWH(x0 = 0, y0 = .5, w0 = 8, h0 = 2, dw = 4, dh = -2) {
     return super.bgXYWH(x0, y0, w0, h0, dw, dh);
   }
 
   override get panelHeight() { return 13 / 3 - .2; }
-  // override get panelOffset() { return 13.3; }
+  override get panelOffset() { return 13; }
 
-  override layoutTable(gamePlay: GamePlay): void {
-    //   TODO: use hexlib@1.0.12, see also gameSetup.initialize TP.nHexes
-    TP.nHexes = 11.3; // <-- feeds into: panelOffset = TP.nHexes+2
-    super.layoutTable(gamePlay);
-    this.layoutTurnlog(9, -16);
-  }
-
-  layoutTurnlog(rowy = 4, colx = -12) {
-    // TODO: super.layoutTurnlog(rowy, colx);
-    const parent = this.scaleCont;
-    this.setToRowCol(this.turnLog, rowy, colx);
-    this.setToRowCol(this.textLog, rowy, colx);
-    this.textLog.y += this.turnLog.height(Player.allPlayers.length + 1); // allow room for 1 line per player
-
-    parent.addChild(this.turnLog, this.textLog);
-    parent.stage.update();
+  override setPanelLocs(): number[][] {
+    const cc = this.hexMap.centerHex.col; // shift right due to rotation:
+    return super.setPanelLocs().map(([r, c, d]) => [r, c < cc ? c + 1 : c + 4, d]);
   }
 
   // use resaCont because we have tilted hexCont...
   override setToRowCol(cont: Container, row = 0, col = 0, hexCont = this.hexMap.mapCont.resaCont) {
-    // super.setToRowCol(cont, row, col, this.hexMap.mapCont.resaCont);
-    if (!cont.parent) this.scaleCont.addChild(cont); // localToLocal requires being on stage
-    //if (cont.parent === hexCont) debugger;
-    const hexC = this.hexMap.centerHex;
-    const { x, y, dxdc, dydr } = hexC.xywh();
-    const xx = x + (col - hexC.col) * dxdc;
-    const yy = y + (row - hexC.row) * dydr;
-    hexCont.localToLocal(xx, yy, cont.parent, cont);
-    if (cont.parent === hexCont) {
-      cont.x = xx; cont.y = yy;
-    }
+    super.setToRowCol(cont, row, col, this.hexMap.mapCont.resaCont);
   }
+
   /** override to ignore markCont, get directly from mapCont.hexCont */
   hexUnderObj1(dragObj: DisplayObject, legalOnly = true ) {
     const hexCont = this.hexMap.mapCont.hexCont;
@@ -79,10 +61,10 @@ export class BatlTable extends Table {
     dragData.dragfunc = dragFunc;
   }
 
-  override enableHexInspector(qY?: number, cont = this.undoCont): void {
+  override enableHexInspector(qY?: number, cont = this.undoCont) {
     cont.y += 100; cont.x += 40;
-    /* TODO: const qShape = */ super.enableHexInspector(qY, cont);
-    const qShape = cont.getChildAt(cont.numChildren - 1);
+    const qShape = super.enableHexInspector(qY, cont);
     this.addInspectorMark(qShape);
+    return qShape;
   }
 }
