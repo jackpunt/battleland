@@ -1,7 +1,7 @@
 import { C, Constructor, F, RC, stime } from "@thegraid/common-lib";
 import { CenterText } from "@thegraid/easeljs-lib";
 import { Bitmap, Container, Text } from "@thegraid/easeljs-module";
-import { AliasLoader, H, Hex, Hex2, HexDir, HexMap, NsDir, TP, Topo, TopoNS } from "@thegraid/hexlib";
+import { AliasLoader, H, Hex, Hex2, HexDir, HexMap, MapCont, NamedContainer, NsDir, TP, Topo, TopoNS } from "@thegraid/hexlib";
 
 type TerrId = 'U' | 'N' | 'M' | 'P' | 'D' | 'W' | 'H' | 'T' | 'B' | 'J' | 'S';
 type Hazard = 'plains' | 'tree' | 'bog' | 'slope' | 'bramble' | 'sand' | 'dune' | 'cliff' | 'drift' | 'volcano';
@@ -137,6 +137,16 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
     console.log(stime(this, `.constructor: BatlMap constructor:`), hexC.name)
   }
 
+  override mapCont: MapCont & { hexContR: NamedContainer };
+  override addToMapCont(hexC?: Constructor<T> | undefined): this {
+    const mapCont = this.mapCont;
+    const rv = super.addToMapCont(hexC);
+    const hexContR = mapCont.hexContR = new NamedContainer('hexContR');
+    const ndx = mapCont.getChildIndex(mapCont.hexCont);
+    mapCont.addChildAt(hexContR, ndx); // insert empty/blank Container above hexCont
+    return rv;
+  }
+
   /** utility for makeAllDistricts; make hex0 at RC */
   override calculateRC0(): RC {
     const offs = Math.ceil(this.nh + this.mh * 1.5);
@@ -145,7 +155,7 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
 
   override makeAllHexes(nh = TP.nHexes, mh = TP.mHexes, rc0: RC): T[] {
     this.setSize(nh = 3, mh = 1);
-    return this.makeMetaHexRect(9, 9, nh, rc0);
+    return this.makeMetaHexRect(5, 5, this.nh, rc0, true);
   }
   metaStep(rc: RC, nd: number, dirs = this.linkDirs): RC {
     const dL = this.nh, dS = dL - 1;
@@ -154,7 +164,7 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
     rc = this.forRCsOnLine(dS, rc, dirS); // step (S) to center of 0-th metaHex
     return rc;
   }
-  makeMetaHexRect(nr = 10, nc = 15, nh = 3, rc0: RC = { row: 0, col: 0}) {
+  makeMetaHexRect(nr = 10, nc = 15, nh = 3, rc0: RC = { row: 0, col: 0 }, rotp = true) {
     let hexAry: T[] = [], district = 0, ds = 2, rl0 = rc0, rc = rc0;
     // let rowMin: number | undefined = undefined;
     let mrow = nr, mcol = nc, rl = (3 * nh - 1); // nh:rl 2->5; 3->8; 4->11;
@@ -165,19 +175,42 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
       for (let c = 1; c < mcol ; c++) {
         // if ((district !== 0) && (district !== ((mrow-1) * 20 + mcol - 2)))
         {
-          hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc));
+          hexAry = hexAry.concat(this.makeMetaHex(nh, district, rc, { row: mrow, col: mcol }));
           // if (rowMin === undefined) rowMin = rc.row;  // the first, top-left row value;
         }
         const dsc = ds ?? (((c % rl) === (rl - rl)) ? ds - 1 : ds); // [disabled] bump row
         district += 1; rc = this.metaStep(rc, dsc);
       }
     }
-    const { x, y, width, height } = this.mapCont.hexCont.getBounds();
-    this.mapCont.hexCont.rotation = this.rotate(nh);
-    this.mapCont.hexCont.setBounds(x, y, width, height);
+    if (rotp) this.rotateHexCont(nh); // need to fix hexUnderPoint() before can use this.
     return hexAry;
   }
 
+  /** rotateHexCont; to align MetaHex row to horizontal. */
+  rotateHexCont(nh: number) {
+    // TODO: offset regX/Y to centerHex
+    const { x, y } = this.xywh, cont = this.mapCont.hexCont;
+    // cont.regX = -x, cont.regY = -y;
+    cont.rotation = this.rotate(nh);
+    // cont.regX = 0, cont.regY = 0;
+  }
+
+  /** cache hexCont and show the bitmap rotated on hexContR. */ // TODO: remove hexContR
+  rotateHexContR(nh: number) {
+    const hexCont = this.mapCont.hexCont, hexContR = this.mapCont.hexContR;
+    const { x, y, width, height } = hexCont.getBounds();
+    hexCont.cache(x, y, width, height); // cache hexCont (bounded by bgr)
+    const cacheString = hexCont.bitmapCache.getCacheDataURL(); // TODO: put cache image on mapCont.hexContR
+    const cacheBitmap = new Bitmap(cacheString);
+    hexContR.addChild(cacheBitmap);
+    hexContR.regX = width / 2;
+    hexContR.regY = height / 2;
+    this.mapCont.hexContR.rotation = this.rotate(nh);
+    hexCont.visible = false;
+    hexCont.setBounds(x, y, width, height);
+  }
+
+  /** return adjacent Angle, given SAS */
   rotate(nh: number) {
     const A = 60 * Math.PI / 180, sinA = Math.sin(A), cosA = Math.cos(A);
     const b = nh, c = 2 * nh - 1;
@@ -185,7 +218,8 @@ export class BatlMap<T extends Hex & BatlHex> extends HexMap<T> {
     const B = Math.asin(sinA * b / a);
     // const B = this.calcSAS(b, c, A);
     // const Bdeg = B * 180 / Math.PI;
-    return (Math.PI/2 - B - A) * 180 / Math.PI; // <-- negative rotation
+    return (Math.PI / 2 - B - A) * 180 / Math.PI; // <-- negative rotation
+    // 1: 30, 2: 10.893, 3: 6.587, 4: 4.715; 5: 3.67
   }
   // for sides a, b, c; law of sines: a/sin(α = opp-a) = b/sin(β = opp-b) = c/sin(γ = opp-b)
   // a^2 = b^2 + c^2 −2bc * cos(α)

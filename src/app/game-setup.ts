@@ -23,7 +23,7 @@ export class GameSetup extends GameSetupLib {
   override initialize(canvasId: string, qParams = []): void {
     // BatlHex uses NsTopo, size 17.
     TP.useEwTopo = false;
-    TP.nHexes = 17;
+    TP.nHexes = 7;
     super.initialize(canvasId);
     return;
   }
@@ -51,6 +51,7 @@ export class GameSetup extends GameSetupLib {
     const gamePlay = new GamePlay(this, scenario) // hexMap, players, fillBag, gStats, mouse/keyboard->GamePlay
     this.gamePlay = gamePlay;
 
-    this.startScenario(scenario);  }
+    this.startScenario(scenario); // ==> table.layoutTable(gamePlay)
+  }
 
 }
