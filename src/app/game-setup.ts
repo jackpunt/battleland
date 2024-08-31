@@ -21,14 +21,15 @@ export class GS {
 export class GameSetup extends GameSetupLib {
 
   override initialize(canvasId: string, qParams = []): void {
-    // BatlHex uses NsTopo, size 17.
+    // BatlHex uses NsTopo, size 7.
     TP.useEwTopo = false;
     TP.nHexes = 7;
     super.initialize(canvasId);
     return;
   }
 
-  override loadImagesThenStartup(qParams: Params = []) {
+  /** Include .gif images for terrainNames: */
+  override loadImagesThenStartup(qParams: Params = {}) {
     const loader = AliasLoader.loader ?? (AliasLoader.loader = new AliasLoader());
     loader.imageArgs.ext = 'gif';
     const names = Object.values(BatlMap.terrainNames);

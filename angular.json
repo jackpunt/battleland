@@ -63,7 +63,8 @@
               "browserTarget": "battleland:build:production"
             },
             "development": {
-              "browserTarget": "battleland:build:development", "port": 4205
+              "port": 4205,
+              "browserTarget": "battleland:build:development"
             }
           },
           "defaultConfiguration": "development"
